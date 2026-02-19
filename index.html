@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VendaMais AI — Assistente de Vendas</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --card: #16161f;
+    --border: #2a2a3a;
+    --accent: #ff6b35;
+    --accent2: #ffb347;
+    --text: #f0efe8;
+    --muted: #7a7a9a;
+    --success: #4ade80;
+    --user-bubble: #1e1e2e;
+    --bot-bubble: #1a1a28;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(255,107,53,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 50% at 10% 80%, rgba(255,179,71,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,15,0.85);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .tagline {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-top: 1px;
+  }
+
+  .status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--success);
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  #setup-panel {
+    position: relative;
+    z-index: 10;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .setup-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  #product-input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  #product-input:focus { border-color: var(--accent); }
+  #product-input::placeholder { color: var(--muted); }
+
+  #chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    position: relative;
+    z-index: 10;
+    scroll-behavior: smooth;
+  }
+
+  #chat-container::-webkit-scrollbar { width: 4px; }
+  #chat-container::-webkit-scrollbar-track { background: transparent; }
+  #chat-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.3s ease forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    align-self: flex-end;
+  }
+
+  .avatar.bot {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+  }
+
+  .avatar.user {
+    background: var(--user-bubble);
+    border: 1px solid var(--border);
+  }
+
+  .bubble {
+    max-width: 70%;
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  .message.bot .bubble {
+    background: var(--bot-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid var(--border);
+    border-bottom-right-radius: 4px;
+  }
+
+  .bubble strong { color: var(--accent); }
+
+  .suggestions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-left: 48px;
+  }
+
+  .suggestion-btn {
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Instrument Sans', sans-serif;
+  }
+
+  .suggestion-btn:hover {
+    border-color: var(--accent);
+    background: rgba(255,107,53,0.08);
+    color: var(--accent);
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 14px 18px;
+  }
+
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s infinite;
+  }
+
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  #input-area {
+    position: relative;
+    z-index: 10;
+    padding: 16px 24px;
+    background: rgba(10,10,15,0.9);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+
+  #user-input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Instrument Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    resize: none;
+    min-height: 46px;
+    max-height: 120px;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+
+  #user-input:focus { border-color: var(--accent); }
+  #user-input::placeholder { color: var(--muted); }
+
+  #send-btn {
+    width: 46px; height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: opacity 0.2s, transform 0.1s;
+    flex-shrink: 0;
+  }
+
+  #send-btn:hover { opacity: 0.9; }
+  #send-btn:active { transform: scale(0.95); }
+  #send-btn svg { width: 20px; height: 20px; fill: white; }
+  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #metrics {
+    display: flex;
+    gap: 20px;
+    padding: 8px 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .metric {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .metric span {
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    color: var(--accent2);
+    font-size: 13px;
+  }
+
+  @media (max-width: 600px) {
+    .bubble { max-width: 88%; }
+    #chat-container { padding: 16px; }
+    .suggestions { padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">💼</div>
+  <div>
+    <div class="logo-text">Venda<span>Mais</span> AI</div>
+    <div class="tagline">Assistente Técnico de Vendas</div>
+  </div>
+  <div class="status">
+    <div class="status-dot"></div>
+    Online
+  </div>
+</header>
+
+<div id="setup-panel">
+  <div class="setup-label">🎯 Produto:</div>
+  <input type="text" id="product-input" placeholder="Ex: Notebook Dell, Software CRM, Smartphone..." />
+</div>
+
+<div id="chat-container"></div>
+
+<div id="metrics">
+  <div class="metric">Produto: <span id="m-product">—</span></div>
+  <div class="metric">Mensagens: <span id="m-msgs">0</span></div>
+  <div class="metric">Técnica: <span id="m-tech">—</span></div>
+</div>
+
+<div id="input-area">
+  <textarea id="user-input" rows="1" placeholder="Faça uma pergunta sobre vendas ou descreva a situação com o cliente..."></textarea>
+  <button id="send-btn" onclick="sendMessage()">
+    <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+  </button>
+</div>
+
+<script>
+  let messages = [];
+  let product = '';
+  let msgCount = 0;
+
+  const productInput = document.getElementById('product-input');
+  const chatContainer = document.getElementById('chat-container');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+
+  userInput.addEventListener('input', () => {
+    userInput.style.height = 'auto';
+    userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+  });
+
+  userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  productInput.addEventListener('input', () => {
+    product = productInput.value.trim();
+    document.getElementById('m-product').textContent = product || '—';
+  });
+
+  function showWelcome() {
+    const prod = product ? `**${product}**` : 'qualquer produto';
+    addMessage('bot', `Olá! Sou o **VendaMais AI**, seu assistente de técnico de vendas. Estou pronto para te ajudar a vender ${prod} com mais eficiência e confiança.\n\nPosso te ajudar com scripts de abordagem, como superar objeções, técnicas de fechamento e muito mais. O que você precisa agora?`);
+
+    const suggestions = product
+      ? [`Como abordar um cliente frio para ${product}?`, `Principais objeções ao vender ${product}`, `Script de fechamento para ${product}`, `Como fazer rapport rápido?`]
+      : ['Como fazer uma abordagem inicial?', 'Quais gatilhos mentais usar?', 'Como superar a objeção de preço?', 'Técnicas de fechamento eficazes'];
+
+    addSuggestions(suggestions);
+  }
+
+  function addMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = `message ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = `avatar ${role}`;
+    avatar.textContent = role === 'bot' ? '🤖' : '👤';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = formatText(text);
+
+    div.appendChild(avatar);
+    div.appendChild(bubble);
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    if (role === 'user') {
+      msgCount++;
+      document.getElementById('m-msgs').textContent = msgCount;
+    }
+    return div;
+  }
+
+  function addSuggestions(list) {
+    const div = document.createElement('div');
+    div.className = 'suggestions';
+    list.forEach(s => {
+      const btn = document.createElement('button');
+      btn.className = 'suggestion-btn';
+      btn.textContent = s;
+      btn.onclick = () => { userInput.value = s; sendMessage(); };
+      div.appendChild(btn);
+    });
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function formatText(text) {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function addTyping() {
+    const div = document.createElement('div');
+    div.className = 'message bot';
+    div.id = 'typing';
+    div.innerHTML = `
+      <div class="avatar bot">🤖</div>
+      <div class="bubble">
+        <div class="typing-indicator">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+      </div>`;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  function detectTechnique(text) {
+    if (/SPIN|situação|implicação/i.test(text)) return 'SPIN Selling';
+    if (/AIDA|atenção|interesse|desejo/i.test(text)) return 'AIDA';
+    if (/rapport|escuta/i.test(text)) return 'Rapport';
+    if (/objeção|objeções/i.test(text)) return 'Objeções';
+    if (/fechamento|fechar/i.test(text)) return 'Fechamento';
+    if (/gatilho|escassez|urgência/i.test(text)) return 'Gatilhos';
+    return 'Consultiva';
+  }
+
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text || sendBtn.disabled) return;
+
+    userInput.value = '';
+    userInput.style.height = 'auto';
+    document.querySelectorAll('.suggestions').forEach(s => s.remove());
+
+    addMessage('user', text);
+    messages.push({ role: 'user', content: text });
+
+    sendBtn.disabled = true;
+    addTyping();
+
+    try {
+      const response = await fetch('/netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages, product })
+      });
+
+      const data = await response.json();
+
+      removeTyping();
+
+      if (data.error) {
+        addMessage('bot', `⚠️ Erro: ${data.error}`);
+      } else {
+        addMessage('bot', data.reply);
+        messages.push({ role: 'assistant', content: data.reply });
+        document.getElementById('m-tech').textContent = detectTechnique(data.reply);
+
+        if (messages.length <= 6) {
+          const followUps = product
+            ? [`Como lidar com "está caro"?`, `Script de follow-up para ${product}`, `Como criar urgência?`]
+            : [`Como criar urgência?`, `Técnica do silêncio no fechamento`, `Como reativar cliente frio?`];
+          addSuggestions(followUps);
+        }
+      }
+    } catch (err) {
+      removeTyping();
+      addMessage('bot', '⚠️ Erro de conexão. Verifique a sua ligação à internet e tente novamente.');
+    } finally {
+      sendBtn.disabled = false;
+    }
+  }
+
+  window.addEventListener('load', showWelcome);
+</script>
+</body>
+</html>
